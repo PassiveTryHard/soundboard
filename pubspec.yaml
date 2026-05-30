@@ -31,20 +31,44 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
+  # Audio playback — supports simultaneous and exclusive modes
+  just_audio: ^0.9.40
+
+  # Audio recording from the microphone
+  record: ^5.1.2
+
+  # File picker — lets users browse device storage for audio files
+  file_picker: ^8.1.2
+
+  # Local database — stores SoundButton objects between sessions
+  hive_flutter: ^1.1.0
+
+  # Simple key-value storage — for app settings
+  shared_preferences: ^2.3.2
+
+  # State management — keeps UI in sync with data
+  flutter_riverpod: ^2.5.1
+
+  # Unique IDs — generates a unique id for each SoundButton
+  uuid: ^4.4.2
+
+  # Color picker UI — lets users pick a button color
+  flutter_colorpicker: ^1.0.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
+  # The lint set provided by the package is activated in the 
+  # `analysis_options.yaml` file located at the root of your package.
+  # Spell checker for your code — highlights bad practices and potential bugs
   flutter_lints: ^6.0.0
+
+  # Generates the Hive adapter code for our data models
+  hive_generator: ^2.0.1
+
+  # Runs the code generation tools
+  build_runner: ^2.4.11
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
