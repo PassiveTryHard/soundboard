@@ -1,8 +1,8 @@
 name: soundboard
-description: "A new Flutter project."
+description: "A customizable soundboard app for Android and iOS."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: 'none' # Prevents accidental publishing to pub.dev (Remove if you want to publish)
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.5
+  sdk: '>=3.0.0 <4.0.0' # The range of Dart SDK versions this app supports
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -34,8 +34,9 @@ dependencies:
   # Audio playback — supports simultaneous and exclusive modes
   just_audio: ^0.9.40
 
-  # Audio recording from the microphone
-  record: ^5.1.2
+  # Audio recording and playback — handles microphone recording
+  # Works cleanly on Android, iOS, and desktop
+  flutter_sound: ^9.2.13
 
   # File picker — lets users browse device storage for audio files
   file_picker: ^8.1.2
