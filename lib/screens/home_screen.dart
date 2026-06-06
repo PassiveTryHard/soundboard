@@ -9,7 +9,16 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Placeholder list — Phase 7 will replace this with real saved buttons
-    final List<SoundButton> buttons = [];
+    final List<SoundButton> buttons = [
+      SoundButton(
+        id: 'test-1',
+        label: 'Test Sound',
+        // This path format tells just_audio to load from the app's bundled assets
+        audioFilePath: 'assets/audio/test_sound.m4a',
+        color: 0xFF6C63FF, // Our purple accent color as an integer
+        createdAt: DateTime.now(),
+      ),
+    ];
 
     return Scaffold(
       appBar: AppBar(
