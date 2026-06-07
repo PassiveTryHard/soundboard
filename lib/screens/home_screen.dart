@@ -1,39 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/sound_button_provider.dart';
 import '../widgets/sound_button_widget.dart';
-import '../models/sound_button.dart';
+import '../widgets/add_button_dialog.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Placeholder list — Phase 7 will replace this with real saved buttons
-    final List<SoundButton> buttons = [
-      SoundButton(
-        id: 'test-1',
-        label: 'Test Sound',
-        // This path format tells just_audio to load from the app's bundled assets
-        audioFilePath: 'assets/audio/test_sound.m4a',
-        color: 0xFF6C63FF, // Our purple accent color as an integer
-        createdAt: DateTime.now(),
-      ),
-    ];
+    // Watches the button list — rebuilds automatically when buttons are added/removed
+    final buttons = ref.watch(soundButtonProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Soundboard'),
         centerTitle: true,
         actions: [
-          // Add button in the top right — wired up fully in Phase 5 and 6
           IconButton(
             icon: const Icon(Icons.add_rounded),
-            onPressed: () {}, // Placeholder for now
+            onPressed: () {
+              // Opens the Add Sound dialog
+              showDialog(
+                context: context,
+                builder: (context) => const AddButtonDialog(),
+              );
+            },
           ),
         ],
       ),
       body: buttons.isEmpty
-          // Empty state — shown when the user has no sounds yet
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -52,11 +48,10 @@ class HomeScreen extends ConsumerWidget {
                 ],
               ),
             )
-          // Grid of sound buttons
           : GridView.builder(
               padding: const EdgeInsets.all(12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3, // 3 buttons per row
+                crossAxisCount: 3,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),
