@@ -59,6 +59,9 @@ dependencies:
   # Finds the correct directory to store temporary files on the device
   path_provider: ^2.1.4
 
+  # Handles requesting runtime permissions like microphone access
+  permission_handler: ^11.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

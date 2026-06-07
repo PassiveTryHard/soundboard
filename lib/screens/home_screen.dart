@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/sound_button_provider.dart';
 import '../widgets/sound_button_widget.dart';
 import '../widgets/add_button_dialog.dart';
+import '../widgets/record_button_dialog.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -20,10 +21,38 @@ class HomeScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.add_rounded),
             onPressed: () {
-              // Opens the Add Sound dialog
-              showDialog(
+              // Shows a bottom sheet letting the user choose import or record
+              showModalBottomSheet(
                 context: context,
-                builder: (context) => const AddButtonDialog(),
+                builder: (context) => SafeArea(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.audio_file_rounded),
+                        title: const Text('Import audio file'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          showDialog(
+                            context: context,
+                            builder: (context) => const AddButtonDialog(),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.mic_rounded),
+                        title: const Text('Record new sound'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          showDialog(
+                            context: context,
+                            builder: (context) => const RecordButtonDialog(),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               );
             },
           ),
