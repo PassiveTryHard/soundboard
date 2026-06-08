@@ -24,13 +24,14 @@ class SoundButtonAdapter extends TypeAdapter<SoundButton> {
       createdAt: fields[4] as DateTime,
       categoryId: fields[5] as String?,
       isFavorite: fields[6] as bool,
+      order: fields[7] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, SoundButton obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class SoundButtonAdapter extends TypeAdapter<SoundButton> {
       ..writeByte(5)
       ..write(obj.categoryId)
       ..writeByte(6)
-      ..write(obj.isFavorite);
+      ..write(obj.isFavorite)
+      ..writeByte(7)
+      ..write(obj.order);
   }
 
   @override
