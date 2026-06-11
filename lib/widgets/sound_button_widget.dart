@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 // Riverpod for accessing providers
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// just_audio for the ProcessingState enum used to detect playback completion
+// just_audio for the ProcessingState enum
 import 'package:just_audio/just_audio.dart';
 
 // Our data model, providers and edit dialog
@@ -37,43 +37,41 @@ class _SoundButtonWidgetState extends ConsumerState<SoundButtonWidget> {
       return;
     }
 
-    // Normal mode — play or stop the sound
+    // Normal mode — play the sound. In simultaneous mode this layers
+    // a new instance on top. In isolated mode this restarts the sound
     final audioService = ref.read(audioServiceProvider);
+    await audioService.playSound(widget.button.id, widget.button.audioFilePath);
 
-    if (_isPlaying) {
-      await audioService.stopSound(widget.button.id);
-      setState(() {
-        _isPlaying = false;
-        _progress = 0.0;
-      });
-    } else {
-      await audioService.playSound(widget.button.id, widget.button.audioFilePath);
-      setState(() => _isPlaying = true);
+    // Update playing state for visual feedback
+    setState(() {
+      _isPlaying = true;
+      _progress = 0.0;
+    });
 
-      final player = audioService.getPlayer(widget.button.id);
+    final player = audioService.getPlayer(widget.button.id);
 
-      // Update the progress bar as the sound plays
-      player?.positionStream.listen((position) {
-        final duration = player.duration;
-        if (duration != null && duration.inMilliseconds > 0 && mounted) {
+    // Update the progress bar as the sound plays
+    // Only relevant in isolated mode since simultaneous creates new players
+    player?.positionStream.listen((position) {
+      final duration = player.duration;
+      if (duration != null && duration.inMilliseconds > 0 && mounted) {
+        setState(() {
+          _progress = position.inMilliseconds / duration.inMilliseconds;
+        });
+      }
+    });
+
+    // Reset the button visuals when the sound finishes naturally
+    player?.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        if (mounted) {
           setState(() {
-            _progress = position.inMilliseconds / duration.inMilliseconds;
+            _isPlaying = false;
+            _progress = 0.0;
           });
         }
-      });
-
-      // Reset the button when the sound finishes naturally
-      player?.playerStateStream.listen((state) {
-        if (state.processingState == ProcessingState.completed) {
-          if (mounted) {
-            setState(() {
-              _isPlaying = false;
-              _progress = 0.0;
-            });
-          }
-        }
-      });
-    }
+      }
+    });
   }
 
   @override
@@ -104,6 +102,7 @@ class _SoundButtonWidgetState extends ConsumerState<SoundButtonWidget> {
           child: Stack(
             children: [
               // Progress bar at the bottom — only shown during playback
+              // in isolated mode where we can track a single player
               if (_isPlaying && !isEditMode)
                 Positioned.fill(
                   child: Align(
@@ -122,37 +121,24 @@ class _SoundButtonWidgetState extends ConsumerState<SoundButtonWidget> {
                   ),
                 ),
 
-              // Main button content — label and playing indicator
+              // Main button content — label only, no stop icon needed
+              // since stopping is now handled by the Stop All button
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Stop icon shown during playback in normal mode
-                      if (_isPlaying && !isEditMode)
-                        const Icon(
-                          Icons.stop_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.button.label,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    widget.button.label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
 
               // Edit mode indicator — small pencil icon in the top right corner
-              // Only visible when edit mode is active
               if (isEditMode)
                 Positioned(
                   top: 4,
@@ -160,7 +146,6 @@ class _SoundButtonWidgetState extends ConsumerState<SoundButtonWidget> {
                   child: Container(
                     padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
-                      // Semi-transparent background so it's visible on any color
                       color: Colors.black38,
                       borderRadius: BorderRadius.circular(4),
                     ),

@@ -20,6 +20,9 @@ import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
 import 'screens/settings_screen.dart';
 
+// Our settings provider that holds and manages all user preferences
+import 'providers/settings_provider.dart';
+
 // main() is the entry point of the app — exactly like main() in C++
 // The 'async' keyword means this function can wait for operations to
 // finish before continuing, using the 'await' keyword
@@ -58,8 +61,9 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // MaterialApp sets up core app-wide configuration including the
-    // title, theme, and the first screen to display
+    // Watch the settings provider so the app rebuilds when theme changes
+    final settings = ref.watch(settingsProvider);
+
     return MaterialApp(
       // App name used by the OS in the app switcher
       title: 'Soundboard',
@@ -68,9 +72,23 @@ class MyApp extends ConsumerWidget {
       // of the screen during development
       debugShowCheckedModeBanner: false,
 
-      // Applies our custom dark theme defined in app_theme.dart
-      // to every screen and widget in the app automatically
-      theme: AppTheme.darkTheme,
+      // Light theme used when the user selects light or system default
+      // with a light system theme
+      theme: AppTheme.lightTheme,
+
+      // Dark theme used when the user selects dark or system default
+      // with a dark system theme
+      darkTheme: AppTheme.darkTheme,
+
+      // Determines which theme is active based on the user's setting
+      // system = follows the phone's system theme setting
+      // dark = always dark regardless of system setting
+      // light = always light regardless of system setting
+      themeMode: settings.theme == 'system'
+          ? ThemeMode.system
+          : settings.theme == 'dark'
+              ? ThemeMode.dark
+              : ThemeMode.light,
 
       // The first screen shown when the app launches
       home: const MainScreen(),
