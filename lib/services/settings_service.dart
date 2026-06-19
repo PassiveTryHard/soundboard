@@ -19,6 +19,16 @@ class SettingsService {
     await _prefs.setString(AppSettings.keyPlaybackMode, mode);
   }
 
+  // Solo mode — only one button can play at a time across the board
+  // Defaults to false if never set before
+  bool getSoloMode() {
+    return _prefs.getBool(AppSettings.keySoloMode) ?? false;
+  }
+
+  Future<void> setSoloMode(bool enabled) async {
+    await _prefs.setBool(AppSettings.keySoloMode, enabled);
+  }
+
   // Theme — defaults to dark if never set before
   String getTheme() {
     return _prefs.getString(AppSettings.keyTheme) ?? 'dark';

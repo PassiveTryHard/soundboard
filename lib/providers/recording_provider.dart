@@ -19,6 +19,16 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
     return await _service.initialize();
   }
 
+  // Fetches available input devices from the recording service
+  //Future<List<InputDevice>> getAvailableDevices() async {
+  //  return await _service.getAvailableDevices();
+  //}
+
+  // Sets the active input device
+  //Future<void> setInputDevice(InputDevice device) async {
+  //  await _service.setInputDevice(device);
+  //}
+
   // Starts a new recording
   Future<void> startRecording() async {
     _recordingPath = await _service.startRecording();

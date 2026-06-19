@@ -21,6 +21,26 @@ class RecordingService {
     return true;
   }
 
+  // Returns a list of available audio input devices on this platform
+  // On mobile this is usually just the built-in mic and any connected
+  // headset — on desktop it includes external USB mics and audio interfaces
+  //Future<List<InputDevice>> getAvailableDevices() async {
+  //  try {
+  //    return await _recorder.listInputDevices();
+  //  } catch (e) {
+  //    debugPrint('Error listing input devices: $e');
+  //    return [];
+  //  }
+  //}
+
+  // Sets the active recording input device by its id
+  //Future<void> setInputDevice(InputDevice device) async {
+  //  _selectedDevice = device;
+  //}
+
+  // The currently selected input device — null means use the default
+  //InputDevice? _selectedDevice;
+
   // Starts recording to a temporary file
   Future<String?> startRecording() async {
     if (!_isInitialized) return null;
@@ -32,6 +52,8 @@ class RecordingService {
     await _recorder.startRecorder(
       toFile: _currentRecordingPath,
       codec: Codec.aacADTS, // AAC is widely supported on Android and iOS
+      // Use the selected device if one was chosen, otherwise use default
+      //inputDeviceId: _selectedDevice?.id,
     );
 
     return _currentRecordingPath;

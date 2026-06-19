@@ -24,12 +24,12 @@ class SoundButtonWidget extends ConsumerStatefulWidget {
 
 class _SoundButtonWidgetState extends ConsumerState<SoundButtonWidget> {
   bool _isPlaying = false;
+  bool _isPaused = false;
   double _progress = 0.0;
 
   // Handles tap behavior depending on whether edit mode is active
   Future<void> _handleTap(bool isEditMode) async {
     if (isEditMode) {
-      // In edit mode, tapping opens the edit dialog instead of playing
       showDialog(
         context: context,
         builder: (context) => EditButtonDialog(button: widget.button),
@@ -37,36 +37,38 @@ class _SoundButtonWidgetState extends ConsumerState<SoundButtonWidget> {
       return;
     }
 
-    // Normal mode — play the sound. In simultaneous mode this layers
-    // a new instance on top. In isolated mode this restarts the sound
     final audioService = ref.read(audioServiceProvider);
     await audioService.playSound(widget.button.id, widget.button.audioFilePath);
 
-    // Update playing state for visual feedback
     setState(() {
       _isPlaying = true;
+      _isPaused = false;
       _progress = 0.0;
     });
 
     final player = audioService.getPlayer(widget.button.id);
 
-    // Update the progress bar as the sound plays
-    // Only relevant in isolated mode since simultaneous creates new players
-    player?.positionStream.listen((position) {
-      final duration = player.duration;
-      if (duration != null && duration.inMilliseconds > 0 && mounted) {
-        setState(() {
-          _progress = position.inMilliseconds / duration.inMilliseconds;
+    // Single combined stream listener — waits for the player to be truly
+    // ready before tracking position to fix the immediate progress bar bug
+    player?.playerStateStream.listen((playerState) {
+      if (playerState.playing &&
+          playerState.processingState == ProcessingState.ready) {
+        player.positionStream.listen((position) {
+          final duration = player.duration;
+          if (duration != null && duration.inMilliseconds > 0 && mounted) {
+            setState(() {
+              _progress = position.inMilliseconds / duration.inMilliseconds;
+            });
+          }
         });
       }
-    });
 
-    // Reset the button visuals when the sound finishes naturally
-    player?.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed) {
+      // Reset visuals when the sound finishes naturally
+      if (playerState.processingState == ProcessingState.completed) {
         if (mounted) {
           setState(() {
             _isPlaying = false;
+            _isPaused = false;
             _progress = 0.0;
           });
         }
@@ -74,9 +76,25 @@ class _SoundButtonWidgetState extends ConsumerState<SoundButtonWidget> {
     });
   }
 
+  // Toggles pause and resume for this specific button
+  Future<void> _togglePause() async {
+    final audioService = ref.read(audioServiceProvider);
+    final player = audioService.getPlayer(widget.button.id);
+    if (player == null) return;
+
+    if (_isPaused) {
+      // Resume playback from where it was paused
+      await player.play();
+      setState(() => _isPaused = false);
+    } else {
+      // Pause without losing position
+      await player.pause();
+      setState(() => _isPaused = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Watch edit mode so the button rebuilds when it changes
     final isEditMode = ref.watch(editModeProvider);
 
     return GestureDetector(
@@ -86,7 +104,6 @@ class _SoundButtonWidgetState extends ConsumerState<SoundButtonWidget> {
         decoration: BoxDecoration(
           color: Color(widget.button.color),
           borderRadius: BorderRadius.circular(12),
-          // Glows when playing in normal mode
           boxShadow: _isPlaying && !isEditMode
               ? [
                   BoxShadow(
@@ -101,8 +118,8 @@ class _SoundButtonWidgetState extends ConsumerState<SoundButtonWidget> {
           borderRadius: BorderRadius.circular(12),
           child: Stack(
             children: [
-              // Progress bar at the bottom — only shown during playback
-              // in isolated mode where we can track a single player
+              // ── Progress Bar ───────────────────────────────────────
+              // Thin strip at the very bottom of the button
               if (_isPlaying && !isEditMode)
                 Positioned.fill(
                   child: Align(
@@ -121,11 +138,44 @@ class _SoundButtonWidgetState extends ConsumerState<SoundButtonWidget> {
                   ),
                 ),
 
-              // Main button content — label only, no stop icon needed
-              // since stopping is now handled by the Stop All button
+              // ── Pause Strip ────────────────────────────────────────
+              // Thin tappable strip just above the progress bar
+              // Only visible while this button is playing
+              if (_isPlaying && !isEditMode)
+                Positioned(
+                  bottom: 6, // Sits just above the progress bar
+                  left: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    // Pause strip tap is separate from the main button tap
+                    onTap: _togglePause,
+                    // Absorbs the tap so it doesn't bubble up to the
+                    // main GestureDetector and restart the sound
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      height: 20,
+                      color: Colors.black.withValues(alpha: 0.25),
+                      child: Center(
+                        child: Icon(
+                          // Shows resume icon when paused, pause icon when playing
+                          _isPaused
+                              ? Icons.play_arrow_rounded
+                              : Icons.pause_rounded,
+                          color: Colors.white.withValues(alpha: 0.8),
+                          size: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // ── Button Label ───────────────────────────────────────
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  // Extra bottom padding when playing to make room
+                  // for the pause strip without overlapping the label
+                  padding: EdgeInsets.fromLTRB(
+                      8, 8, 8, _isPlaying && !isEditMode ? 28 : 8),
                   child: Text(
                     widget.button.label,
                     textAlign: TextAlign.center,
@@ -138,7 +188,7 @@ class _SoundButtonWidgetState extends ConsumerState<SoundButtonWidget> {
                 ),
               ),
 
-              // Edit mode indicator — small pencil icon in the top right corner
+              // ── Edit Mode Indicator ────────────────────────────────
               if (isEditMode)
                 Positioned(
                   top: 4,

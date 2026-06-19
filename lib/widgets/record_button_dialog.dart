@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+
+// flutter_sound provides InputDevice for microphone selection
+//import 'package:flutter_sound/flutter_sound.dart';
 import 'package:just_audio/just_audio.dart';
 import '../providers/recording_provider.dart';
 import '../providers/sound_button_provider.dart';
@@ -226,6 +229,51 @@ class _RecordButtonDialogState extends ConsumerState<RecordButtonDialog> {
                     ),
                   ),
                 ),
+                // ── Input Device Selector ──────────────────────────────────
+          // Only shown when multiple input devices are available
+          // On most phones this won't appear — mainly useful on desktop
+          //FutureBuilder<List<InputDevice>>(
+          //  future: ref.read(recordingProvider.notifier).getAvailableDevices(),
+          //  builder: (context, snapshot) {
+          //    final devices = snapshot.data ?? [];
+
+              // Hide the selector if there's only one device available
+          //    if (devices.length <= 1) return const SizedBox.shrink();
+
+          //    return Column(
+          //      crossAxisAlignment: CrossAxisAlignment.start,
+          //      children: [
+          //        const SizedBox(height: 12),
+          //        const Text(
+          //          'Input device',
+          //          style: TextStyle(color: Colors.white54, fontSize: 12),
+          //        ),
+          //        const SizedBox(height: 4),
+          //        // Dropdown showing all available input devices
+          //        DropdownButton<InputDevice>(
+          //          isExpanded: true,
+          //          hint: const Text('Default microphone'),
+          //          items: devices.map((device) {
+          //            return DropdownMenuItem<InputDevice>(
+          //              value: device,
+          //              child: Text(
+          //                device.label,
+          //                overflow: TextOverflow.ellipsis,
+          //              ),
+          //            );
+          //          }).toList(),
+          //          onChanged: (device) {
+          //            if (device != null) {
+          //              ref
+          //                  .read(recordingProvider.notifier)
+          //                  .setInputDevice(device);
+          //            }
+          //          },
+          //        ),
+          //      ],
+          //    );
+          //  },
+          //),
               ],
             ),
           ],

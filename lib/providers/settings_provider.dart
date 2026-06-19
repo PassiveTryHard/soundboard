@@ -9,10 +9,14 @@ class AppSettingsState {
   final String theme;
   final bool cloudBackupEnabled;
 
+  // Solo mode — when true only one button can play at a time
+  final bool soloMode;
+
   const AppSettingsState({
     this.playbackMode = AppSettings.playbackSimultaneous,
     this.theme = 'dark',
     this.cloudBackupEnabled = false,
+    this.soloMode = false,
   });
 
   // Creates a copy with one or more fields changed
@@ -21,11 +25,13 @@ class AppSettingsState {
     String? playbackMode,
     String? theme,
     bool? cloudBackupEnabled,
+    bool? soloMode,
   }) {
     return AppSettingsState(
       playbackMode: playbackMode ?? this.playbackMode,
       theme: theme ?? this.theme,
       cloudBackupEnabled: cloudBackupEnabled ?? this.cloudBackupEnabled,
+      soloMode: soloMode ?? this.soloMode,
     );
   }
 }
@@ -45,6 +51,7 @@ class SettingsNotifier extends StateNotifier<AppSettingsState> {
       playbackMode: _service.getPlaybackMode(),
       theme: _service.getTheme(),
       cloudBackupEnabled: _service.getCloudBackupEnabled(),
+      soloMode: _service.getSoloMode(),
     );
 
     // Sync the audio engine with the saved playback mode
@@ -68,12 +75,21 @@ class SettingsNotifier extends StateNotifier<AppSettingsState> {
     state = state.copyWith(cloudBackupEnabled: enabled);
   }
 
+  // Updates solo mode and notifies the audio service immediately
+  Future<void> setSoloMode(bool enabled) async {
+    await _service.setSoloMode(enabled);
+    state = state.copyWith(soloMode: enabled);
+    _syncAudioService();
+  }
+
   // Keeps the audio service in sync with the current playback mode setting
   void _syncAudioService() {
     final audioService = _ref.read(audioServiceProvider);
     audioService.setPlaybackMode(
       state.playbackMode == AppSettings.playbackSimultaneous,
     );
+    // Pass solo mode to the audio service
+    audioService.setSoloMode(state.soloMode);
   }
 }
 

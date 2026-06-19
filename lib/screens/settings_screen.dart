@@ -37,8 +37,9 @@ class SettingsScreen extends ConsumerWidget {
             secondary: const Icon(Icons.layers_rounded),
             title: const Text('Simultaneous playback'),
             subtitle: const Text(
-              'When on, multiple sounds can play at once. '
-              'When off, starting a new sound stops the current one.',
+              'When on, tapping a button layers a new instance of the '
+              'sound on top of any already playing. When off, tapping '
+              'a button restarts it from the beginning.',
             ),
             // Switch reflects the current saved setting
             value: settings.playbackMode == AppSettings.playbackSimultaneous,
@@ -50,6 +51,18 @@ class SettingsScreen extends ConsumerWidget {
                     : AppSettings.playbackExclusive,
               );
             },
+          ),
+
+          // Solo mode toggle
+          SwitchListTile(
+            secondary: const Icon(Icons.music_off_rounded),
+            title: const Text('Solo mode'),
+            subtitle: const Text(
+              'When on, only one button can play at a time across '
+              'the entire board. Starting any sound stops all others.',
+            ),
+            value: settings.soloMode,
+            onChanged: (value) => notifier.setSoloMode(value),
           ),
 
           const Divider(),

@@ -25,13 +25,28 @@ class AudioService {
   // the beginning instead of layering
   bool _isSimultaneous = true;
 
+  // When true, starting any sound stops all other currently playing sounds
+  // This is board-wide — only one button can ever be playing at a time
+  bool _isSoloMode = false;
+
+
   // Called from the Settings screen when the user changes playback mode
   void setPlaybackMode(bool simultaneous) {
     _isSimultaneous = simultaneous;
   }
 
+  // Called from settings when the user toggles solo mode
+  void setSoloMode(bool solo) {
+    _isSoloMode = solo;
+  }
+
   // Main method called when a sound button is tapped
   Future<void> playSound(String buttonId, String filePath) async {
+    // Solo mode — stop everything before playing anything new
+    if (_isSoloMode) {
+      await stopAll();
+    }
+
     if (_isSimultaneous) {
       // Simultaneous mode — create a brand new player every time so
       // multiple instances of the same sound can play on top of each other
