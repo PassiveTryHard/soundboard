@@ -1,8 +1,10 @@
-// dart:io for file handling
-import 'dart:io';
+// dart:async for StreamController
 import 'dart:async';
 
-// Flutter foundation provides debugPrint for safe console logging
+// dart:io for file handling
+import 'dart:io';
+
+// Flutter foundation for debugPrint
 import 'package:flutter/foundation.dart';
 
 // Flutter services for loading bundled asset files
@@ -15,126 +17,170 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 
 class AudioService {
-  // A map of players — each sound button gets its own dedicated player
-  // The key is the button's unique id, the value is its AudioPlayer
-  final Map<String, AudioPlayer> _players = {};
+  // Per-button Sets of active players — each button tracks its own
+  // instances independently. Key is buttonId, value is the Set of
+  // all currently active AudioPlayers for that button
+  final Map<String, Set<AudioPlayer>> _buttonPlayers = {};
 
-  // When true, pressing a button while it's playing adds another instance
-  // on top — the sound overlaps with itself
-  // When false, pressing a button while it's playing restarts it from
-  // the beginning instead of layering
+  // Global counter tracking total active sound instances across all buttons
+  // When this reaches 0 the Stop All button hides itself
+  int _activeInstanceCount = 0;
+
+  // Stream that notifies the UI whenever the instance count changes
+  // Used by HomeScreen to show/hide the Stop All button
+  final _playbackStateController = StreamController<int>.broadcast();
+  Stream<int> get playbackStateStream => _playbackStateController.stream;
+
+  // Current value of the instance counter — used for initial UI state
+  int get activeInstanceCount => _activeInstanceCount;
+
+  // Whether any sound is currently playing across all buttons
+  bool get isAnythingPlaying => _activeInstanceCount > 0;
+
+  // Playback mode — simultaneous layers instances, exclusive restarts
   bool _isSimultaneous = true;
 
-  // When true, starting any sound stops all other currently playing sounds
-  // This is board-wide — only one button can ever be playing at a time
+  // Solo mode — only one button can play at a time across the board
   bool _isSoloMode = false;
 
-
-  // Called from the Settings screen when the user changes playback mode
   void setPlaybackMode(bool simultaneous) {
     _isSimultaneous = simultaneous;
   }
 
-  // Called from settings when the user toggles solo mode
   void setSoloMode(bool solo) {
     _isSoloMode = solo;
   }
 
+  // Ensures a button's Set exists before we try to use it
+  void _ensureSetExists(String buttonId) {
+    _buttonPlayers.putIfAbsent(buttonId, () => {});
+  }
+
   // Main method called when a sound button is tapped
   Future<void> playSound(String buttonId, String filePath) async {
-    // Solo mode — stop everything before playing anything new
+    // Solo mode — stop all other buttons before playing
     if (_isSoloMode) {
       await stopAll();
     }
 
+    _ensureSetExists(buttonId);
+
     if (_isSimultaneous) {
-      // Simultaneous mode — create a brand new player every time so
-      // multiple instances of the same sound can play on top of each other
-      final player = AudioPlayer();
-      await _loadAndPlay(player, filePath);
-
-      // Store with a unique key so multiple instances don't overwrite each other
-      final instanceKey = '$buttonId-${DateTime.now().millisecondsSinceEpoch}';
-      _players[instanceKey] = player;
-
-      // Automatically remove the player from the map when it finishes
-      // to prevent memory from filling up with completed players
-      player.playerStateStream.listen((state) {
-        if (state.processingState == ProcessingState.completed) {
-          _players.remove(instanceKey);
-          player.dispose();
-        }
-      });
+      // Simultaneous mode — create a new player instance every tap
+      // so the sound layers on top of itself
+      await _createAndPlay(buttonId, filePath);
     } else {
-      // Isolated mode — reuse the same player for this button so pressing
-      // it again always restarts from the beginning
-      if (!_players.containsKey(buttonId)) {
-        _players[buttonId] = AudioPlayer();
-      }
-      final player = _players[buttonId]!;
-
-      // Stop any current playback and restart from the beginning
-      await player.stop();
-      await _loadAndPlay(player, filePath);
+      // Exclusive mode — clear this button's existing instances first
+      // then start fresh, effectively restarting from the beginning
+      await _clearButtonInstances(buttonId);
+      await _createAndPlay(buttonId, filePath);
     }
-
-    // Notify any listeners that playback state changed
-    _playbackStateController.add(null);
   }
 
-  // Loads the audio file and starts playback — handles both bundled
-  // assets and real files on the device storage
-  Future<void> _loadAndPlay(AudioPlayer player, String filePath) async {
+  // Creates a new AudioPlayer, plays it, and manages its full lifecycle
+  Future<void> _createAndPlay(String buttonId, String filePath) async {
+    final player = AudioPlayer();
+
+    // Add the player to this button's Set and increment the global counter
+    _buttonPlayers[buttonId]!.add(player);
+    _activeInstanceCount++;
+    _playbackStateController.add(_activeInstanceCount);
+
     try {
-      if (filePath.startsWith('assets/')) {
-        // Copy the bundled asset to a temp file so Android can read it
-        final byteData = await rootBundle.load(filePath);
-        final tempDir = await getTemporaryDirectory();
-        final tempFile = File('${tempDir.path}/temp_sound');
-        await tempFile.writeAsBytes(byteData.buffer.asUint8List());
-        await player.setFilePath(tempFile.path);
-      } else {
-        await player.setFilePath(filePath);
-      }
-      await player.seek(Duration.zero);
-      await player.play();
+      await _loadAndPlay(player, filePath);
+
+      // Wait for the player to complete naturally
+      await player.playerStateStream.firstWhere(
+        (state) => state.processingState == ProcessingState.completed,
+      );
     } catch (e) {
-      debugPrint('Error playing sound: $e');
-    }
-  }
-
-  // Stops all currently playing sounds across all players
-  Future<void> stopAll() async {
-    for (final player in _players.values) {
-      await player.stop();
-    }
-    _playbackStateController.add(null);
-  }
-
-  // Returns true if any sound is currently playing
-  // Used by the Stop All button to decide whether to show itself
-  bool get isAnythingPlaying {
-    return _players.values.any((player) => player.playing);
-  }
-
-  // A stream that notifies listeners whenever playback state changes
-  // Used by the Stop All button to show/hide itself reactively
-  final _playbackStateController = StreamController<void>.broadcast();
-  Stream<void> get playbackStateStream => _playbackStateController.stream;
-
-  // Returns the AudioPlayer for a given button so widgets can
-  // listen to its state stream and react when playback finishes
-  AudioPlayer? getPlayer(String buttonId) {
-    return _players[buttonId];
-  }
-
-  // Cleans up all players when the service is no longer needed
-  // Important for freeing up device memory and audio resources
-  Future<void> dispose() async {
-    for (final player in _players.values) {
+      debugPrint('Playback error: $e');
+    } finally {
+      // Always runs regardless of how playback ended — success, error,
+      // or manual stop. Removes this instance and decrements the counter
+      _buttonPlayers[buttonId]?.remove(player);
+      _activeInstanceCount = (_activeInstanceCount - 1).clamp(0, 999);
+      _playbackStateController.add(_activeInstanceCount);
       await player.dispose();
     }
-    _players.clear();
+  }
+
+  // Loads audio from either a bundled asset or device storage and plays it
+  Future<void> _loadAndPlay(AudioPlayer player, String filePath) async {
+    if (filePath.startsWith('assets/')) {
+      // Copy bundled asset to a temp file so Android can read it reliably
+      final byteData = await rootBundle.load(filePath);
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/temp_sound');
+      await tempFile.writeAsBytes(byteData.buffer.asUint8List());
+      await player.setFilePath(tempFile.path);
+    } else {
+      await player.setFilePath(filePath);
+    }
+    await player.seek(Duration.zero);
+    await player.play();
+  }
+
+  // Pauses all active instances for a specific button
+  Future<void> pauseButton(String buttonId) async {
+    final players = _buttonPlayers[buttonId];
+    if (players == null || players.isEmpty) return;
+    for (final player in players) {
+      await player.pause();
+    }
+  }
+
+  // Resumes all paused instances for a specific button
+  Future<void> resumeButton(String buttonId) async {
+    final players = _buttonPlayers[buttonId];
+    if (players == null || players.isEmpty) return;
+    for (final player in players) {
+      await player.play();
+    }
+  }
+
+  // Removes the most recently added instance for a specific button
+  Future<void> removeLatestInstance(String buttonId) async {
+    final players = _buttonPlayers[buttonId];
+    if (players == null || players.isEmpty) return;
+
+    // The last element in the Set is the most recently added instance
+    final latest = players.last;
+    await latest.stop();
+    // Cleanup is handled automatically by the finally block in _createAndPlay
+  }
+
+  // Returns the number of active instances for a specific button
+  int getInstanceCount(String buttonId) {
+    return _buttonPlayers[buttonId]?.length ?? 0;
+  }
+
+  // Returns all active players for a button — used by the widget
+  // to build one progress bar per active instance
+  Set<AudioPlayer> getPlayers(String buttonId) {
+    return _buttonPlayers[buttonId] ?? {};
+  }
+
+  // Clears all instances for a specific button
+  Future<void> _clearButtonInstances(String buttonId) async {
+    final players = _buttonPlayers[buttonId];
+    if (players == null || players.isEmpty) return;
+    for (final player in players.toList()) {
+      await player.stop();
+      // finally block in _createAndPlay handles removal and counter update
+    }
+  }
+
+  // Stops all sounds across all buttons
+  Future<void> stopAll() async {
+    for (final buttonId in _buttonPlayers.keys) {
+      await _clearButtonInstances(buttonId);
+    }
+  }
+
+  // Cleans up everything when the service is no longer needed
+  Future<void> dispose() async {
+    await stopAll();
     _playbackStateController.close();
   }
 }

@@ -24,22 +24,20 @@ class HomeScreen extends ConsumerStatefulWidget {
 // Changed to StatefulWidget so we can listen to the audio service
 // stream and rebuild when playback state changes
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  // Tracks whether anything is currently playing
-  // Controls the visibility of the Stop All button
-  bool _isAnythingPlaying = false;
+  // Tracks total active sound instances across all buttons
+  // Driven by the audio service's counter via its stream
+  int _activeInstanceCount = 0;
 
   @override
   void initState() {
     super.initState();
-    // Listen to the audio service's playback stream and update
-    // _isAnythingPlaying whenever any sound starts or stops
+    // Listen to the audio service's instance count stream and rebuild
+    // whenever any sound starts or stops anywhere in the app
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final audioService = ref.read(audioServiceProvider);
-      audioService.playbackStateStream.listen((_) {
+      audioService.playbackStateStream.listen((count) {
         if (mounted) {
-          setState(() {
-            _isAnythingPlaying = audioService.isAnythingPlaying;
-          });
+          setState(() => _activeInstanceCount = count);
         }
       });
     });
@@ -143,7 +141,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // Extra bottom padding so buttons aren't hidden behind
                   // the Stop All button when it's visible
                   padding: EdgeInsets.fromLTRB(
-                      12, 12, 12, _isAnythingPlaying ? 80 : 12),
+                  12, 12, 12, _activeInstanceCount > 0 ? 80 : 12),
                   gridDelegate:
                       const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
@@ -171,14 +169,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOut,
             // Slides in from below when playing, hides below screen when not
-            bottom: _isAnythingPlaying ? 16 : -80,
+            bottom: _activeInstanceCount > 0 ? 16 : -80,
             left: 0,
             right: 0,
             child: Center(
               child: GestureDetector(
                 onTap: () {
                   ref.read(audioServiceProvider).stopAll();
-                  setState(() => _isAnythingPlaying = false);
+                  setState(() => _activeInstanceCount = 0);
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
