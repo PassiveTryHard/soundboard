@@ -80,6 +80,10 @@ class AudioService {
   // Creates a new AudioPlayer, plays it, and manages its full lifecycle
   Future<void> _createAndPlay(String buttonId, String filePath) async {
     final player = AudioPlayer();
+    // TEMPORARY: log every state change this player goes through
+    player.playerStateStream.listen((s) {
+      debugPrint('[check2] playing=${s.playing} state=${s.processingState}');
+    });
 
     // Add the player to this button's Set and increment the global counter
     _buttonPlayers[buttonId]!.add(player);
@@ -102,6 +106,7 @@ class AudioService {
       _activeInstanceCount = (_activeInstanceCount - 1).clamp(0, 999);
       _playbackStateController.add(_activeInstanceCount);
       await player.dispose();
+      debugPrint('[check3] finally ran'); // does this appear after Stop All?
     }
   }
 
@@ -118,7 +123,9 @@ class AudioService {
       await player.setFilePath(filePath);
     }
     await player.seek(Duration.zero);
+    debugPrint('[check1] calling play()');
     await player.play();
+    debugPrint('[check1] play() returned'); // when does this appear?
   }
 
   // Pauses all active instances for a specific button
